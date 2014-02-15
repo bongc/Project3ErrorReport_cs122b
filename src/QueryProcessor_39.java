@@ -1,6 +1,5 @@
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -210,178 +209,17 @@ public class QueryProcessor_39 {
 			return -1;
 		}
 	}
-	
-	public static String generateReport(Connection con){
-		String report = "<!DOCTYPE html><html><style>" +
-				"body{color: white; background-color: black;}" +
-				"table{border:white;}" +
-				"</style><body><h1>Error Report</h1>";
 
-		
-		String error1 = "SELECT id, title " +
-				"FROM movies " +
-				"WHERE movies.id " +
-				"NOT IN (SELECT movies.id " +
-				"FROM movies, stars_in_movies " +
-				"WHERE movies.id = stars_in_movies.movie_id);";
-		
-		String error2 = "SELECT id, first_name, last_name " +
-				"FROM stars " +
-				"WHERE stars.id " +
-				"NOT IN (SELECT stars.id " +
-				"FROM stars, stars_in_movies " +
-				"WHERE stars.id = stars_in_movies.star_id);";
-		
-		String error3 = "SELECT id, name " +
-				"FROM genres " +
-				"WHERE id " +
-				"NOT IN (SELECT genres.id " +
-				"FROM genres, genres_in_movies " +
-				"WHERE genres.id = genres_in_movies.genre_id) " +
-				"ORDER BY genres.name;";
-		
-		String error4 = "SELECT id, title " +
-				"FROM movies " +
-				"WHERE id " +
-				"NOT IN (SELECT movies.id " +
-				"FROM movies, genres_in_movies " +
-				"WHERE movies.id = genres_in_movies.movie_id);";
-		
-		String error5 = "SELECT * " +
-				"FROM stars " +
-				"WHERE first_name IS NULL " +
-				"OR first_name = '' " +
-				"OR last_name IS NULL " +
-				"OR last_name = '';";
-		
-		String error6 = "SELECT creditcards.id, creditcards.expiration " +
-				"FROM customers, creditcards " +
-				"WHERE creditcards.id = customers.cc_id AND creditcards.expiration < CURDATE() " +
-				"ORDER BY creditcards.expiration;";
-		
-		String error7 = "SELECT a.id, a.title, a.year " +
-				"FROM movies AS a, movies AS b " +
-				"WHERE a.id<>b.id " +
-				"AND a.year = b.year " +
-				"AND a.title = b.title " +
-				"GROUP BY a.id " +
-				"ORDER BY a.title, a.year;";
-		
-		String error8 = "SELECT a.id, a.first_name, a.last_name, a.dob " +
-				"FROM stars AS a, stars AS b " +
-				"WHERE a.id<>b.id " +
-				"AND a.first_name = b.first_name " +
-				"AND a.last_name = b.last_name " +
-				"AND a.dob = b.dob " +
-				"GROUP BY a.id " +
-				"ORDER BY a.first_name, a.last_name;";
-		
-		String error9 = "SELECT a.id, a.name " +
-				"FROM genres AS a, genres AS b " +
-				"WHERE a.id<>b.id " +
-				"AND a.name = b.name " +
-				"GROUP BY a.id " +
-				"ORDER BY a.name;";
-		
-		String error10 = "SELECT id, first_name, last_name, dob FROM stars WHERE dob > CURDATE() OR YEAR(dob) < '1900';";
-		
-		String error11 = "SELECT id, email FROM customers WHERE email NOT LIKE '%@%';";
-		
+	public static boolean checkIfEmployeeExists(Connection con, String email, String password) {
 		try {
-			Statement select1= con.createStatement();
-			Statement select2= con.createStatement();
-			Statement select3= con.createStatement();
-			Statement select4= con.createStatement();
-			Statement select5= con.createStatement();
-			Statement select6= con.createStatement();
-			Statement select7= con.createStatement();
-			Statement select8= con.createStatement();
-			Statement select9= con.createStatement();
-			Statement select10 = con.createStatement();
-			Statement select11 = con.createStatement();
-			
-			ResultSet rs1 = select1.executeQuery(error1);
-			ResultSet rs2 = select2.executeQuery(error2);
-			ResultSet rs3 = select3.executeQuery(error3);
-			ResultSet rs4 = select4.executeQuery(error4);
-			ResultSet rs5 = select5.executeQuery(error5);
-			ResultSet rs6 = select6.executeQuery(error6);
-			ResultSet rs7 = select7.executeQuery(error7);
-			ResultSet rs8 = select8.executeQuery(error8);
-			ResultSet rs9 = select9.executeQuery(error9);
-			ResultSet rs10 = select10.executeQuery(error10);
-			ResultSet rs11 = select11.executeQuery(error11);
-			
-			report += tableMaker(rs1, "\n<caption>The following list shows movies missing stars</caption>");
-			report += tableMaker(rs2, "\n<caption>The following list shows stars in no movies</caption>");
-			report += tableMaker(rs3, "\n<caption>The following list shows genres that do not have movies</caption>");
-			report += tableMaker(rs4, "\n<caption>The following list shows movies without genres</caption>");
-			report += tableMaker(rs5, "\n<caption>The following list shows stars with no first name OR no last name</caption>");
-			report += tableMaker(rs6, "\n<caption>The following list shows expired credit cards for existing customers</caption>");
-			report += tableMaker(rs7, "\n<caption>The following list shows movies that are the same with same year and same title</caption>");
-			report += tableMaker(rs8, "\n<caption>The following list shows stars that are the same with same first name, last name, and date of birth</caption>");
-			report += tableMaker(rs9, "\n<caption>The following list shows genres that are the same</caption>");
-			report += tableMaker(rs10, "\n<caption>The following list shows stars with birth dates greater than today or earlier than 1900</caption>");
-			report += tableMaker(rs11, "\n<caption>The following list shows customers that have emails with no '@' sign</caption>");
-			
-			rs1.close();
-			rs2.close();
-			rs3.close();
-			rs4.close();
-			rs5.close();
-			rs6.close();
-			rs7.close();
-			rs8.close();
-			rs9.close();
-			rs10.close();
-			rs11.close();
-			select1.close();
-			select2.close();
-			select3.close();
-			select4.close();
-			select5.close();
-			select6.close();
-			select7.close();
-			select8.close();
-			select9.close();
-			select10.close();
-			select11.close();
+			Statement select = con.createStatement();
+			String query = "SELECT * FROM EMPLOYEES WHERE email='" + email + "' AND password='" + password + "'";
+			ResultSet result = select.executeQuery(query);
+			return result.first();
 		} catch (SQLException e) {
-			e.printStackTrace();
+			System.out.println(e.getMessage());
+			return false;
 		}
-		
-		report += "\n</html></body>";
-		
-		return report;
 	}
-	
-	private static String tableMaker(ResultSet rs, String caption){
-		String report = "\n<table border=\"1\">";
-		report += caption;
-		int resultCount =0;
-		try {
-			report += "\n<tr>";
-			ResultSetMetaData data = rs.getMetaData();
-			for(int i = 1; i <=data.getColumnCount(); i++){
-				report += "\n<th>" + data.getColumnName(i) + "</th>";
-			}
-			report += "\n</tr>";
-			while(rs.next()){
-				report += "<tr>";
-				for(int i = 1; i <=data.getColumnCount(); i++){
-					report += "\n<td>" + rs.getString(data.getColumnName(i)) + "</td>";
-				}
-				resultCount++;
-				report += "</tr>";
-				
-			}
-		
-		report += "\n</table>";
-		report += "<b>" + resultCount + " results returned.</b>";
-	
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-		}
-		return report;
-	}
+
 }

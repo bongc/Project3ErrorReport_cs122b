@@ -2,8 +2,13 @@
 // Coded by Chen Li/Kirill Petrov Winter, 2005
 // Slightly revised for ICS185 Spring 2005, by Norman Jacobson
 
-import java.io.File;
-import java.io.FileWriter;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -17,15 +22,12 @@ public class JDBCMain_39 {
 		Class.forName("com.mysql.jdbc.Driver").newInstance();
 
 		Scanner inputReader = new Scanner(System.in);
-		System.out.println("Enter username:");
-		String userName = inputReader.nextLine().trim();
-		System.out.println("Enter password:");
-		String password = inputReader.nextLine().trim();
 
 		Connection connection = null;
 		try {
-			// Connect to the test database
-			connection = DriverManager.getConnection("jdbc:mysql:///moviedb", userName, password);
+			// Connect to the test database, auto enter user and pass since we
+			// will use employee table instead..
+			connection = DriverManager.getConnection("jdbc:mysql:///moviedb?noAccessToProcedureBodies=true", "testuser", "testpass");
 		} catch (SQLException e) {
 			System.out.println(e.getMessage());
 			System.out.println("There was an error logging in. Check Logs.");
@@ -35,32 +37,31 @@ public class JDBCMain_39 {
 			return;
 		}
 
+		System.out.println("Employee Login, enter email:");
+		String email = inputReader.nextLine().trim();
+		System.out.println("Employee Login, enter password:");
+		String password = inputReader.nextLine().trim();
+		boolean empExists = QueryProcessor_39.checkIfEmployeeExists(connection, email, password);
+
 		boolean programDone = false;
-		while (!programDone) {
-			System.out.println("Commands: PRINT, ADD STAR, ADD CUSTOMER, DELETE CUSTOMER, METADATA, RAW COMMAND, GENERATE REPORT, EXIT MENU, EXIT PROGRAM");
+		if (!empExists) {
+			System.out.println("Employee does not exist.");
+		}
+
+
+		while (!programDone && empExists) {
+			System.out
+					.println("Commands: PRINT, ADD STAR, ADD CUSTOMER, ADD_MOVIE, DELETE CUSTOMER, METADATA, RAW COMMAND, EXIT MENU, EXIT PROGRAM");
 
 			String nextCommand = inputReader.nextLine().trim();
 			if (nextCommand.toUpperCase().equals("EXIT PROGRAM")) {
 				programDone = true;
 			} else if (nextCommand.toUpperCase().equals("EXIT MENU")) {
-				System.out.println("Enter username:");
-				userName = inputReader.nextLine().trim();
-				System.out.println("Enter password:");
+				System.out.println("Employee Login, enter email:");
+				email = inputReader.nextLine().trim();
+				System.out.println("Employee Login, enter password:");
 				password = inputReader.nextLine().trim();
-				try {
-					// Connect to the test database
-					connection = DriverManager.getConnection("jdbc:mysql:///moviedb", userName, password);
-				} catch (SQLException e) {
-					System.out.println("There was an error connecting to the database. Check logs.");
-					System.out.println(e.getMessage());
-					if (connection != null) {
-						connection.close();
-					}
-					if (inputReader != null) {
-						inputReader.close();
-					}
-					return;
-				}
+				empExists = QueryProcessor_39.checkIfEmployeeExists(connection, email, password);
 			} else if (nextCommand.toUpperCase().equals("PRINT")) {
 				printCommand(inputReader, connection);
 			} else if (nextCommand.toUpperCase().equals("ADD STAR")) {
@@ -76,14 +77,9 @@ public class JDBCMain_39 {
 				QueryProcessor_39.showTableMetadata(connection);
 			} else if (nextCommand.toUpperCase().equals("RAW COMMAND")) {
 				rawCommand(inputReader, connection);
-			} else if (nextCommand.toUpperCase().equals("GENERATE REPORT")){
-				File f = new File("error.html");
-				FileWriter fw = new FileWriter(f);
-				fw.write(QueryProcessor_39.generateReport(connection));
-				fw.flush();
-				fw.close();
-				System.out.println("Report saved to " + f.getAbsolutePath() + ".");
-			}else {
+			} else if (nextCommand.toUpperCase().equals("ADD_MOVIE") || nextCommand.toUpperCase().equals("ADD MOVIE")) {
+				addMovieCommand(inputReader, connection);
+			} else {
 				System.out.println("COMMAND WAS NOT RECOGNIZED!");
 			}
 			System.out.println("");
@@ -91,6 +87,63 @@ public class JDBCMain_39 {
 		inputReader.close();
 		connection.close();
 		System.out.println("bye.");
+	}
+
+	private static void addMovieCommand(Scanner inputReader, Connection connection) throws SQLException {
+
+		System.out.println("Login successful.");
+		System.out.println("Enter movie title:");
+		String movieTitle = inputReader.nextLine().trim();
+		System.out.println("Enter movie year:");
+		int movieYear = Integer.parseInt(inputReader.nextLine().trim());
+		System.out.println("Enter movie director:");
+		String movieDirector = inputReader.nextLine().trim();
+		System.out.println("Enter movie banner url (optional, press enter to skip):");
+		String movieBannerUrl = inputReader.nextLine().trim();
+		if(movieBannerUrl.equals("")){
+			movieBannerUrl = null;
+		}
+		System.out.println("Enter movie trailer url (optional, press enter to skip):");
+		String movieTrailerUrl = inputReader.nextLine().trim();
+		if(movieTrailerUrl.equals("")){
+			movieTrailerUrl = null;
+		}
+		// add star relationship
+		System.out.println("Enter stars first name:");
+		String starFirstName = inputReader.nextLine().trim();
+		System.out.println("Enter stars last name:");
+		String starLastName = inputReader.nextLine().trim();
+		System.out.println("Enter dob (optional, format YYYY-MM-DD):");
+		String starDOB = inputReader.nextLine().trim();
+		if(starDOB.equals("")){
+			starDOB = null;
+		}
+		System.out.println("Enter stars photo url (optional):");
+		String starPhotoUrl = inputReader.nextLine().trim();
+		if(starPhotoUrl.equals("")){
+			starPhotoUrl = null;
+		}
+		System.out.println("Enter genre for the movie:");
+		String genre = inputReader.nextLine().trim();
+		// Prepare to call the stored procedure RAISESAL.
+	    // This sample uses the SQL92 syntax
+	    CallableStatement cstmt = connection.prepareCall ("call add_movie(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+
+	    // Declare that the first ? is a return value of type Int
+	    //cstmt.registerOutParameter (1, Types.INTEGER);
+
+	    cstmt.setString (1, movieTitle);
+	    cstmt.setInt (2, movieYear);  
+	    cstmt.setString (3, movieDirector);
+	    cstmt.setString (4, movieBannerUrl);
+	    cstmt.setString (5, movieBannerUrl);
+	    cstmt.setString (6, starFirstName);
+	    cstmt.setString (7, starLastName);
+	    cstmt.setString (8, starDOB);
+	    cstmt.setString (9, starPhotoUrl);
+	    cstmt.setString (10, genre);
+	    
+	    cstmt.execute();
 	}
 
 	private static void rawCommand(Scanner inputReader, Connection connection) throws SQLException {
@@ -171,20 +224,24 @@ public class JDBCMain_39 {
 		if (cNameTokens[0].equals("") || cCCID.equals("") || cAddress.equals("") || cEmail.equals("")
 				|| cPassword.equals("")) {
 			// dont do anything
-			System.out
-					.println("Customer object is missing a field, make sure to fill everything out and try again.");
+			System.out.println("Customer object is missing a field, make sure to fill everything out and try again.");
 		} else {
 			boolean success = false;
 			if (cNameTokens.length >= 2)
-				success = QueryProcessor_39.addCustomer(connection, cNameTokens[0], cNameTokens[1], cCCID,
-						cAddress, cEmail, cPassword);
-			else if (cNameTokens.length == 1)
-				success = QueryProcessor_39.addCustomer(connection, "", cNameTokens[0], cCCID, cAddress,
+				success = QueryProcessor_39.addCustomer(connection, cNameTokens[0], cNameTokens[1], cCCID, cAddress,
 						cEmail, cPassword);
+			else if (cNameTokens.length == 1)
+				success = QueryProcessor_39.addCustomer(connection, "", cNameTokens[0], cCCID, cAddress, cEmail,
+						cPassword);
 			if (success)
 				System.out.println("Adding customer successful!");
 			else
 				System.out.println("Adding customer failed, please check output or error log.");
 		}
+	}
+
+	static String readFile(String path, Charset encoding) throws IOException {
+		byte[] encoded = Files.readAllBytes(Paths.get(path));
+		return encoding.decode(ByteBuffer.wrap(encoded)).toString();
 	}
 }
