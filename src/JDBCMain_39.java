@@ -2,7 +2,8 @@
 // Coded by Chen Li/Kirill Petrov Winter, 2005
 // Slightly revised for ICS185 Spring 2005, by Norman Jacobson
 
-
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
@@ -51,7 +52,7 @@ public class JDBCMain_39 {
 
 		while (!programDone && empExists) {
 			System.out
-					.println("Commands: PRINT, ADD STAR, ADD CUSTOMER, ADD_MOVIE, DELETE CUSTOMER, METADATA, RAW COMMAND, EXIT MENU, EXIT PROGRAM");
+					.println("Commands: PRINT, ADD STAR, ADD CUSTOMER, ADD_MOVIE, GENERATE REPORT, DELETE CUSTOMER, METADATA, RAW COMMAND, EXIT MENU, EXIT PROGRAM");
 
 			String nextCommand = inputReader.nextLine().trim();
 			if (nextCommand.toUpperCase().equals("EXIT PROGRAM")) {
@@ -79,6 +80,13 @@ public class JDBCMain_39 {
 				rawCommand(inputReader, connection);
 			} else if (nextCommand.toUpperCase().equals("ADD_MOVIE") || nextCommand.toUpperCase().equals("ADD MOVIE")) {
 				addMovieCommand(inputReader, connection);
+			} else if (nextCommand.toUpperCase().equals("GENERATE REPORT")){
+				File f = new File("error.html");
+				FileWriter fw = new FileWriter(f);
+				fw.write(QueryProcessor_39.generateReport(connection));
+				fw.flush();
+				fw.close();
+				System.out.println("Report saved to " + f.getAbsolutePath() + ".");
 			} else {
 				System.out.println("COMMAND WAS NOT RECOGNIZED!");
 			}
@@ -228,11 +236,9 @@ public class JDBCMain_39 {
 		} else {
 			boolean success = false;
 			if (cNameTokens.length >= 2)
-				success = QueryProcessor_39.addCustomer(connection, cNameTokens[0], cNameTokens[1], cCCID, cAddress,
-						cEmail, cPassword);
+				success = QueryProcessor_39.addCustomer(connection, cNameTokens[0], cNameTokens[1], cCCID, cAddress, cEmail, cPassword);
 			else if (cNameTokens.length == 1)
-				success = QueryProcessor_39.addCustomer(connection, "", cNameTokens[0], cCCID, cAddress, cEmail,
-						cPassword);
+				success = QueryProcessor_39.addCustomer(connection, "", cNameTokens[0], cCCID, cAddress, cEmail, cPassword);
 			if (success)
 				System.out.println("Adding customer successful!");
 			else
